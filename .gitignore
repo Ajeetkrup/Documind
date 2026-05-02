@@ -1,7 +1,10 @@
+venv/
 __pycache__/
 *.pyc
 .env
-chroma_db/
-venv/
-app.log
+.pytest_cache/
 .DS_Store
+
+chroma_db/
+milvus.db
+volumes/
