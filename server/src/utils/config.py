@@ -2,7 +2,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 import os
 
 class Settings(BaseSettings):
-    NVIDIA_API_KEY: str
     GROQ_API_KEY: str
     PHOENIX_API_KEY: str
     PHOENIX_COLLECTOR_ENDPOINT: str
