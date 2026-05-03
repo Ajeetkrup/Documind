@@ -13,6 +13,7 @@ langgraph
 langgraph-prebuilt
 numpy
 onnxruntime
+opencv-python-headless
 optimum[onnxruntime]
 pydantic
 pydantic-settings
