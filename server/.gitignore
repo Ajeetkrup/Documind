@@ -8,3 +8,6 @@ __pycache__/
 chroma_db/
 milvus.db
 volumes/
+
+documents.json
+

@@ -18,19 +18,31 @@ if os.name == 'nt':
     os.symlink = _symlink_fallback
 
 from phoenix.otel import register
+from src.utils.config import settings
 
 tracer_provider = register(
-  project_name="default",
+  project_name="documind",
+  endpoint=settings.PHOENIX_COLLECTOR_ENDPOINT,
+  api_key=settings.PHOENIX_API_KEY,
   auto_instrument=True
 )
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from src.routes.api import router as api_router
 from dotenv import load_dotenv
 
 load_dotenv()
 
-app = FastAPI()
+app = FastAPI(title="Documind API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(api_router, prefix="/api", tags=["API"])
 

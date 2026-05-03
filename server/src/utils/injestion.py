@@ -1,11 +1,11 @@
 import os
 from tempfile import NamedTemporaryFile
-from langchain_milvus import Milvus
 from langchain_docling import DoclingLoader
 from langchain_docling.loader import ExportType
 from src.utils.onnx_embeddings import ONNXEmbeddings
 from docling.chunking import HybridChunker
 from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
+import json
 
 
 from langchain_chroma import Chroma
@@ -33,6 +33,12 @@ class DocumentIngestor:
             )
             docs = loader.load()
             docs = filter_complex_metadata(docs)
+
+            with open("documents.json", "w") as f:
+                json.dump([
+                    {"content": d.page_content, "metadata": d.metadata}
+                    for d in docs
+                ], f)
 
             Chroma.from_documents(
                 documents=docs,
