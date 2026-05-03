@@ -1,5 +1,4 @@
 <div align="center">
-  <img src="docs/agent_architecture.png" alt="Documind Architecture" width="900"/>
   <h1>Documind</h1>
   <p><strong>Production-minded, agentic RAG for reliable question-answering over private documents.</strong></p>
 </div>

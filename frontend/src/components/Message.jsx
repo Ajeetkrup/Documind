@@ -1,4 +1,6 @@
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
 import { Bot } from 'lucide-react'
 
 const formatTime = (date) =>
@@ -26,7 +28,27 @@ export function Message({ msg }) {
         <div className="msg-bubble">
           {isUser
             ? msg.content
-            : <ReactMarkdown>{msg.content}</ReactMarkdown>}
+            : (
+              <div className="markdown-body">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkBreaks]}
+                  components={{
+                    a: ({ href, children, ...props }) => (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        {...props}
+                      >
+                        {children}
+                      </a>
+                    ),
+                  }}
+                >
+                  {msg.content}
+                </ReactMarkdown>
+              </div>
+            )}
         </div>
         <span className="msg-time">{formatTime(msg.timestamp)}</span>
       </div>

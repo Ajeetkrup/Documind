@@ -117,6 +117,8 @@ html, body, #root {
   flex-direction: column;
   padding: 24px 16px;
   gap: 28px;
+  overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
   z-index: 10;
   transition: transform var(--transition-slow);
@@ -199,6 +201,14 @@ html, body, #root {
   border-color: var(--accent);
   box-shadow: 0 0 28px rgba(139,92,246,0.15);
 }
+.upload-zone.uploading {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.upload-zone.uploading:hover {
+  border-color: rgba(139,92,246,0.3);
+  box-shadow: none;
+}
 .upload-zone input[type="file"] {
   position: absolute;
   inset: 0;
@@ -206,6 +216,9 @@ html, body, #root {
   cursor: pointer;
   width: 100%;
   height: 100%;
+}
+.upload-zone.uploading input[type="file"] {
+  cursor: not-allowed;
 }
 .upload-icon {
   color: var(--accent-2);
@@ -534,7 +547,10 @@ html, body, #root {
 .message.user .msg-time { text-align: right; }
 
 /* Markdown inside bot bubble */
-.msg-bubble p { margin-bottom: 8px; }
+.markdown-body { width: 100%; overflow-wrap: anywhere; }
+.markdown-body > *:first-child { margin-top: 0; }
+.markdown-body > *:last-child { margin-bottom: 0; }
+.msg-bubble p { margin-bottom: 10px; }
 .msg-bubble p:last-child { margin-bottom: 0; }
 .msg-bubble code {
   background: rgba(139,92,246,0.12);
@@ -558,6 +574,44 @@ html, body, #root {
 .msg-bubble li { margin-bottom: 4px; }
 .msg-bubble strong { color: var(--text-primary); font-weight: 600; }
 .msg-bubble h1,.msg-bubble h2,.msg-bubble h3 { font-family: var(--font-display); margin: 10px 0 6px; }
+.msg-bubble h4,.msg-bubble h5,.msg-bubble h6 { margin: 8px 0 6px; }
+.msg-bubble a {
+  color: #93c5fd;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.msg-bubble a:hover { color: #bfdbfe; }
+.msg-bubble blockquote {
+  margin: 10px 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--accent-2);
+  background: rgba(139,92,246,0.08);
+  border-radius: 8px;
+  color: var(--text-secondary);
+}
+.msg-bubble hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 12px 0;
+}
+.msg-bubble table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 13px;
+  display: block;
+  overflow-x: auto;
+}
+.msg-bubble thead {
+  background: rgba(139,92,246,0.12);
+}
+.msg-bubble th,
+.msg-bubble td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
 
 /* Typing indicator */
 .typing-bubble {

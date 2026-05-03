@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str
     PHOENIX_API_KEY: str
     PHOENIX_COLLECTOR_ENDPOINT: str
+    VITE_API_BASE_URL: str
 
     model_config = SettingsConfigDict(
         env_file=".env",

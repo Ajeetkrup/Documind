@@ -1,23 +1,26 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Upload, CheckCircle2, AlertCircle, Loader2, BookOpen, FileText, X } from 'lucide-react'
+import { uploadDocument } from '../api'
 
-const API_BASE = 'http://localhost:8000/api'
 const TECH = ['FastAPI', 'LangGraph', 'ChromaDB', 'Docling', 'NVIDIA AI', 'React 19']
 
 export default function Sidebar({ uploadedDocs, onUpload, open, onClose }) {
   const [dragOver, setDragOver]       = useState(false)
   const [uploadState, setUploadState] = useState(null)
   const [uploadMsg, setUploadMsg]     = useState('')
+  const uploadLockRef = useRef(false)
+  const isUploading = uploadState === 'uploading'
 
   const handleFile = useCallback(async (file) => {
-    if (!file) return
+    if (!file || uploadLockRef.current) return
+
+    uploadLockRef.current = true
+    setDragOver(false)
     setUploadState('uploading')
     setUploadMsg(`Uploading ${file.name}…`)
-    const form = new FormData()
-    form.append('document', file)
+
     try {
-      const res = await fetch(`${API_BASE}/upload-document`, { method: 'POST', body: form })
-      if (!res.ok) throw new Error(await res.text())
+      await uploadDocument(file)
       setUploadState('success')
       setUploadMsg(`${file.name} ingested!`)
       onUpload(file.name)
@@ -26,11 +29,15 @@ export default function Sidebar({ uploadedDocs, onUpload, open, onClose }) {
       setUploadState('error')
       setUploadMsg('Upload failed. Try again.')
       setTimeout(() => setUploadState(null), 4000)
+    } finally {
+      uploadLockRef.current = false
     }
   }, [onUpload])
 
   const onDrop = (e) => {
-    e.preventDefault(); setDragOver(false)
+    e.preventDefault()
+    if (uploadLockRef.current) return
+    setDragOver(false)
     handleFile(e.dataTransfer.files[0])
   }
 
@@ -57,16 +64,28 @@ export default function Sidebar({ uploadedDocs, onUpload, open, onClose }) {
         <div className="sidebar-section">
           <span className="sidebar-label">Upload Document</span>
           <div
-            className={`upload-zone ${dragOver ? 'drag-over' : ''}`}
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-            onDragLeave={() => setDragOver(false)}
+            className={`upload-zone ${dragOver ? 'drag-over' : ''} ${isUploading ? 'uploading' : ''}`}
+            onDragOver={(e) => {
+              e.preventDefault()
+              if (uploadLockRef.current) return
+              setDragOver(true)
+            }}
+            onDragLeave={() => {
+              if (uploadLockRef.current) return
+              setDragOver(false)
+            }}
             onDrop={onDrop}
+            aria-disabled={isUploading}
           >
             <input
               type="file"
               id="file-upload"
               accept=".pdf,.docx,.txt,.md"
-              onChange={(e) => handleFile(e.target.files[0])}
+              disabled={isUploading}
+              onChange={(e) => {
+                handleFile(e.target.files[0])
+                e.target.value = ''
+              }}
             />
             <div className="upload-icon"><Upload size={28} /></div>
             <p className="upload-text"><strong>Click to upload</strong> or drag &amp; drop</p>

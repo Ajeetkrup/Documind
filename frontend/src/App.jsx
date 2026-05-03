@@ -4,8 +4,7 @@ import { Bot, Send, Loader2, Sparkles, Menu, AlertCircle } from 'lucide-react'
 import Sidebar from './components/Sidebar'
 import { Message, TypingIndicator } from './components/Message'
 import WelcomeScreen from './components/WelcomeScreen'
-
-const API_BASE = 'http://localhost:8000/api'
+import { postChatQuery } from './api'
 
 export default function App() {
   const [messages, setMessages]         = useState([])
@@ -45,11 +44,7 @@ export default function App() {
 
   const extractAnswer = (response) => {
     if (!response) return 'No response received.'
-    if (response.messages && Array.isArray(response.messages)) {
-      const last = response.messages[response.messages.length - 1]
-      return last?.content ?? JSON.stringify(response)
-    }
-    return JSON.stringify(response)
+    return response.message
   }
 
   const sendMessage = useCallback(async (text) => {
@@ -64,9 +59,7 @@ export default function App() {
     setInput('')
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/chat?query=${encodeURIComponent(trimmed)}`, { method: 'POST' })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
+      const data = await postChatQuery(trimmed)
       setMessages(prev => [...prev, { role: 'bot', content: extractAnswer(data), timestamp: new Date() }])
     } catch (err) {
       setMessages(prev => [...prev, {
@@ -77,7 +70,7 @@ export default function App() {
     } finally {
       setLoading(false)
     }
-  }, [input, loading, hasDocs])
+  }, [input, loading, hasDocs, triggerUploadPrompt])
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
