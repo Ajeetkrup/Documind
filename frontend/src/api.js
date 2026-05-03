@@ -1,7 +1,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8004/api'
 
 export async function postChatQuery(query) {
-  const res = await fetch(`${API_BASE_URL}/chat?query=${encodeURIComponent(query)}`, {
+  const res = await fetch(`${API_BASE_URL}/api/chat?query=${encodeURIComponent(query)}`, {
     method: 'POST',
   })
 
@@ -16,7 +16,7 @@ export async function uploadDocument(file) {
   const form = new FormData()
   form.append('document', file)
 
-  const res = await fetch(`${API_BASE_URL}/upload-document`, {
+  const res = await fetch(`${API_BASE_URL}/api/upload-document`, {
     method: 'POST',
     body: form,
   })
