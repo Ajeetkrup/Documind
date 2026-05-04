@@ -3,6 +3,10 @@
   <p><strong>Production-minded, agentic RAG for reliable question-answering over private documents.</strong></p>
 </div>
 
+## Live Demo
+
+[https://documind-production-81f2.up.railway.app/](https://documind-production-81f2.up.railway.app/)
+
 ## What This Project Demonstrates
 
 Documind is a full-stack AI system that ingests enterprise-style documents and answers questions using an adaptive retrieval workflow. It is built to show practical engineering depth, not just a demo chat UI.
