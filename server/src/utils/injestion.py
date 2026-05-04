@@ -7,13 +7,12 @@ from docling.chunking import HybridChunker
 from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
 import json
 
-
 from langchain_chroma import Chroma
 
 from langchain_community.vectorstores.utils import filter_complex_metadata
 
 class DocumentIngestor:
-    def __init__(self, model_path: str = "onnx_output", persist_directory: str = "./chroma_db"):
+    def __init__(self, model_path: str = os.getenv("ONNX_MODEL_PATH", "onnx_output"), persist_directory: str = "./chroma_db"):
         self.embedding = ONNXEmbeddings(model_path=model_path)
         self.hf_tokenizer = HuggingFaceTokenizer(tokenizer=self.embedding.tokenizer, max_tokens=512)
         self.chunker = HybridChunker(tokenizer=self.hf_tokenizer)
