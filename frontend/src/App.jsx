@@ -4,7 +4,7 @@ import { Bot, Send, Loader2, Sparkles, Menu, AlertCircle } from 'lucide-react'
 import Sidebar from './components/Sidebar'
 import { Message, TypingIndicator } from './components/Message'
 import WelcomeScreen from './components/WelcomeScreen'
-import { postChatQuery } from './api'
+import { streamChatQuery } from './api'
 
 export default function App() {
   const [messages, setMessages]         = useState([])
@@ -17,6 +17,9 @@ export default function App() {
   const bottomRef   = useRef(null)
   const textareaRef = useRef(null)
   const toastTimer  = useRef(null)
+  const streamBufferRef = useRef('')
+  const streamTimerRef = useRef(null)
+  const streamDoneRef = useRef(false)
 
   const hasDocs = uploadedDocs.length > 0;
 
@@ -42,10 +45,14 @@ export default function App() {
     ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`
   }, [input])
 
-  const extractAnswer = (response) => {
-    if (!response) return 'No response received.'
-    return response.message
-  }
+  useEffect(() => {
+    return () => {
+      if (streamTimerRef.current) {
+        clearInterval(streamTimerRef.current)
+        streamTimerRef.current = null
+      }
+    }
+  }, [])
 
   const sendMessage = useCallback(async (text) => {
     if (!hasDocs) {
@@ -58,15 +65,89 @@ export default function App() {
     setMessages(prev => [...prev, userMsg])
     setInput('')
     setLoading(true)
+    streamBufferRef.current = ''
+    streamDoneRef.current = false
+
     try {
-      const data = await postChatQuery(trimmed)
-      setMessages(prev => [...prev, { role: 'bot', content: extractAnswer(data), timestamp: new Date() }])
+      await new Promise((resolve, reject) => {
+        const clearDrainer = () => {
+          if (streamTimerRef.current) {
+            clearInterval(streamTimerRef.current)
+            streamTimerRef.current = null
+          }
+        }
+
+        const appendBotChunk = (chunk) => {
+          setMessages(prev => {
+            const updated = [...prev]
+            const last = updated[updated.length - 1]
+
+            if (last?.role === 'bot') {
+              updated[updated.length - 1] = { ...last, content: `${last.content}${chunk}` }
+              return updated
+            }
+
+            return [...updated, { role: 'bot', content: chunk, timestamp: new Date() }]
+          })
+        }
+
+        const resolveIfDrained = () => {
+          if (streamDoneRef.current && !streamBufferRef.current.length) {
+            clearDrainer()
+            resolve()
+          }
+        }
+
+        const startDrainer = () => {
+          if (streamTimerRef.current) return
+          // Slow down rendering for a smoother "typewriter" stream effect.
+          streamTimerRef.current = setInterval(() => {
+            if (streamBufferRef.current.length) {
+              const chunk = streamBufferRef.current.slice(0, 2)
+              streamBufferRef.current = streamBufferRef.current.slice(2)
+              appendBotChunk(chunk)
+            }
+            resolveIfDrained()
+          }, 25)
+        }
+
+        const closeStream = streamChatQuery(trimmed, {
+          onToken: (token) => {
+            streamBufferRef.current += token
+            startDrainer()
+          },
+          onDone: () => {
+            streamDoneRef.current = true
+            startDrainer()
+            resolveIfDrained()
+            closeStream()
+          },
+          onError: (err) => {
+            clearDrainer()
+            closeStream()
+            reject(err)
+          },
+        })
+      })
     } catch (err) {
-      setMessages(prev => [...prev, {
-        role: 'bot',
-        content: `⚠️ Something went wrong: ${err.message}`,
-        timestamp: new Date(),
-      }])
+      setMessages(prev => {
+        const updated = [...prev]
+        if (!updated.length) return prev
+        const lastIndex = updated.length - 1
+        const last = updated[lastIndex]
+        if (last.role === 'bot' && !last.content.trim()) {
+          updated[lastIndex] = {
+            ...last,
+            content: `⚠️ Something went wrong: ${err.message}`,
+          }
+          return updated
+        }
+        return [...updated, {
+          role: 'bot',
+          content: `⚠️ Something went wrong: ${err.message}`,
+          timestamp: new Date(),
+        }]
+      })
     } finally {
       setLoading(false)
     }
@@ -122,7 +203,7 @@ export default function App() {
           ) : (
             messages.map((msg, i) => <Message key={i} msg={msg} />)
           )}
-          {loading && <TypingIndicator />}
+          {loading && messages[messages.length - 1]?.role !== 'bot' && <TypingIndicator />}
           <div ref={bottomRef} />
         </div>
 
