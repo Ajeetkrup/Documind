@@ -31,7 +31,7 @@ For recruiters and startup founders, this repo demonstrates:
 1. User uploads a document (`/api/upload-document`).
 2. Backend parses/chunks with Docling + HybridChunker.
 3. Chunks are embedded with local ONNX embeddings and stored in Chroma.
-4. User asks a question (`/api/chat`).
+4. User asks a question (`/api/chat` or `/api/chat/stream`).
 5. LangGraph orchestrator routes through retrieve -> grade -> rewrite (if needed) -> answer.
 6. RAGAS evaluation runs in background for quality tracking.
 7. Phoenix traces the pipeline for observability.
@@ -101,6 +101,7 @@ Frontend includes:
 - drag-and-drop file upload,
 - ingestion state feedback,
 - document-aware chat gating (forces upload before querying),
+- token-by-token streamed answers via SSE,
 - markdown response rendering,
 - responsive sidebar/chat experience.
 
@@ -193,7 +194,13 @@ Documind/
   multipart upload; ingests and indexes a single document.
 
 - `POST /api/chat?query=...`  
-  runs agentic retrieval workflow and returns model response.
+  runs agentic retrieval workflow and returns full model response after completion.
+
+- `GET /api/chat/stream?query=...`  
+  streams answer tokens as Server-Sent Events (SSE) for live incremental rendering.
+  Event payloads:
+  - `{"token":"..."}` for each chunk
+  - `{"done": true}` when generation is complete
 
 ---
 
@@ -238,6 +245,14 @@ npm run dev
 ```
 
 Open `http://localhost:5173`.
+
+Create `frontend/.env` (if not already present):
+
+```env
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+The frontend uses `GET /api/chat/stream` for real-time streaming and keeps `POST /api/chat` as a non-stream fallback path.
 
 ---
 
