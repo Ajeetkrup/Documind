@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Literal
 from src.utils.llm import grader_model
 from langgraph.graph import MessagesState
+from src.utils.stream_events import emit_stream_event
 
 GRADE_PROMPT = (
     "You are a grader assessing relevance of a retrieved document to a user question. \n\n"
@@ -30,6 +31,7 @@ def grade_documents(
     state: MessagesState,
 ) -> Literal["generate_answer", "rewrite_question"]:
     """Determine whether the retrieved documents are relevant to the question."""
+    emit_stream_event("node_start", name="grade_documents")
     question = state["messages"][0].content
     context = state["messages"][-1].content
 
@@ -41,8 +43,11 @@ def grade_documents(
         )
     )
     score = response.binary_score
+    next_node = "generate_answer" if score == "yes" else "rewrite_question"
+    emit_stream_event(
+        "node_end",
+        name="grade_documents",
+        payload={"decision": score, "next_node": next_node},
+    )
 
-    if score == "yes":
-        return "generate_answer"
-    else:
-        return "rewrite_question"
+    return next_node

@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 import { Upload, CheckCircle2, AlertCircle, Loader2, BookOpen, FileText, X } from 'lucide-react'
 import { uploadDocument } from '../api'
 
-const TECH = ['FastAPI', 'LangGraph', 'ChromaDB', 'Docling', 'NVIDIA AI', 'React 19']
+const TECH = ['FastAPI', 'LangGraph', 'ChromaDB', 'Docling', 'Groq', 'React 19']
 
 export default function Sidebar({ uploadedDocs, onUpload, open, onClose }) {
   const [dragOver, setDragOver]       = useState(false)

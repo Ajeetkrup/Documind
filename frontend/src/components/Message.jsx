@@ -2,6 +2,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import { Bot } from 'lucide-react'
+import ExecutionTimeline from './ExecutionTimeline'
 
 const formatTime = (date) =>
   date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -19,6 +20,7 @@ export function TypingIndicator() {
 
 export function Message({ msg }) {
   const isUser = msg.role === 'user'
+  const hasSteps = Array.isArray(msg.executionSteps) && msg.executionSteps.length > 0
   return (
     <div className={`message ${isUser ? 'user' : 'bot'}`}>
       <div className={`msg-avatar ${isUser ? 'user' : 'bot'}`}>
@@ -29,25 +31,30 @@ export function Message({ msg }) {
           {isUser
             ? msg.content
             : (
-              <div className="markdown-body">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkBreaks]}
-                  components={{
-                    a: ({ href, children, ...props }) => (
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        {...props}
-                      >
-                        {children}
-                      </a>
-                    ),
-                  }}
-                >
-                  {msg.content}
-                </ReactMarkdown>
-              </div>
+              <>
+                {hasSteps && <ExecutionTimeline steps={msg.executionSteps} />}
+                {msg.content && (
+                  <div className="markdown-body">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm, remarkBreaks]}
+                      components={{
+                        a: ({ href, children, ...props }) => (
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            {...props}
+                          >
+                            {children}
+                          </a>
+                        ),
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
+                )}
+              </>
             )}
         </div>
         <span className="msg-time">{formatTime(msg.timestamp)}</span>

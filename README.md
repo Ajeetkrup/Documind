@@ -1,6 +1,6 @@
 <div align="center">
   <h1>Documind</h1>
-  <p><strong>Production-minded, agentic RAG for reliable question-answering over private documents.</strong></p>
+  <p><strong>Production-minded, agentic RAG system with transparent execution and reliable answers over private documents.</strong></p>
 </div>
 
 ## Live Demo
@@ -9,15 +9,16 @@
 
 ## What This Project Demonstrates
 
-Documind is a full-stack AI system that ingests enterprise-style documents and answers questions using an adaptive retrieval workflow. It is built to show practical engineering depth, not just a demo chat UI.
+Documind is a full-stack AI product that ingests enterprise-style documents and answers questions using an adaptive retrieval workflow. It is built to demonstrate practical engineering depth, not just a chatbot demo.
 
 For recruiters and startup founders, this repo demonstrates:
 
-- end-to-end product ownership (frontend + backend + infra-style concerns),
-- agentic RAG architecture with self-correction,
+- end-to-end product ownership (UI, API, retrieval pipeline, and deployment ergonomics),
+- agentic RAG architecture with self-correction loops,
+- execution transparency (node/tool lifecycle timeline in UI),
 - security-aware prompting (prompt injection guardrails),
 - measurable quality loops (RAGAS evaluation),
-- observability for debugging and iteration (Arize Phoenix + OpenTelemetry),
+- production-grade observability (Arize Phoenix + OpenTelemetry),
 - real-world platform decisions under constraints (Windows compatibility, local embeddings, vector DB trade-offs).
 
 ---
@@ -33,8 +34,10 @@ For recruiters and startup founders, this repo demonstrates:
 3. Chunks are embedded with local ONNX embeddings and stored in Chroma.
 4. User asks a question (`/api/chat` or `/api/chat/stream`).
 5. LangGraph orchestrator routes through retrieve -> grade -> rewrite (if needed) -> answer.
-6. RAGAS evaluation runs in background for quality tracking.
-7. Phoenix traces the pipeline for observability.
+6. Frontend receives ordered node/tool status events and renders execution timeline.
+7. Final answer is streamed token-by-token during answer generation.
+8. RAGAS evaluation runs in background for quality tracking.
+9. Phoenix traces the pipeline for observability.
 
 ---
 
@@ -52,17 +55,28 @@ The QA pipeline is not a single retrieve-and-generate call. It is a graph:
 
 This gives controlled adaptation when first-pass retrieval is weak.
 
-### 2) Prompt Injection Guardrails
+### 2) Execution Transparency in UI
+
+The frontend shows step-by-step execution so users can see what the agent is doing:
+
+- node status events (`node_start` -> `node_end`),
+- tool status events (`tool_start` -> `tool_end`),
+- visual running/done markers in the chat timeline,
+- streamed final answer text while the `generate_answer` node runs.
+
+This creates trust and improves debuggability during real usage.
+
+### 3) Prompt Injection Guardrails
 
 Guardrails are explicitly embedded in prompts for both grading and answering:
 
 - retrieved context is marked as **UNTRUSTED**,
-- model is told to ignore any instructions inside context,
+- model is told to ignore instructions inside context,
 - model is constrained to relevance-checking or factual extraction only.
 
 This protects against malicious instructions buried in uploaded files.
 
-### 3) Hybrid Retriever (Semantic + Keyword)
+### 4) Hybrid Retriever (Semantic + Keyword)
 
 Retrieval combines:
 
@@ -72,11 +86,11 @@ Retrieval combines:
 
 Why it matters: semantic retrieval catches meaning; BM25 catches exact terms/entities. Ensemble retrieval is more robust than either alone.
 
-### 4) Local ONNX Embeddings
+### 5) Local ONNX Embeddings
 
 Embeddings run from a local ONNX model for predictable inference and lower vendor lock-in at retrieval time.
 
-### 5) RAGAS Quality Check
+### 6) RAGAS Quality Check
 
 Each chat request schedules a background evaluation using:
 
@@ -86,7 +100,7 @@ Each chat request schedules a background evaluation using:
 
 This creates a measurable feedback loop for answer quality.
 
-### 6) Arize Phoenix Observability
+### 7) Arize Phoenix Observability
 
 The app is instrumented with Phoenix OpenTelemetry registration in backend startup:
 
@@ -94,14 +108,15 @@ The app is instrumented with Phoenix OpenTelemetry registration in backend start
 - helps debug routing/retrieval behavior,
 - supports iteration with visibility instead of guesswork.
 
-### 7) Full-Stack Product UX
+### 8) Full-Stack Product UX
 
 Frontend includes:
 
 - drag-and-drop file upload,
 - ingestion state feedback,
 - document-aware chat gating (forces upload before querying),
-- token-by-token streamed answers via SSE,
+- execution timeline with per-node/per-tool status,
+- final-answer streaming via SSE,
 - markdown response rendering,
 - responsive sidebar/chat experience.
 
@@ -115,7 +130,7 @@ Building a reliable RAG product is hard because you are solving multiple systems
 - **Documents are messy**: real PDFs contain structural metadata that many vector stores cannot ingest directly.
 - **Security is subtle**: retrieved text can contain adversarial instructions that hijack generation.
 - **Infra is platform-dependent**: Windows filesystem behavior and vector DB packaging constraints can break "standard" setups.
-- **LLM apps need observability**: without tracing/evals, failures feel random and are difficult to improve.
+- **LLM apps need observability**: without traces and evals, failures feel random and are difficult to improve.
 
 Documind addresses these with explicit architecture, not one-off patches.
 
@@ -139,15 +154,23 @@ Documind addresses these with explicit architecture, not one-off patches.
 - **Why:** Docling outputs nested metadata that Chroma rejects.
 - **Impact:** Prevented ingestion failures while retaining useful searchable content.
 
-### Decision 5: Explicit anti-injection prompt constraints
+### Decision 5: Explicit execution event contract for frontend
+- **Why:** Users and developers need deterministic, ordered visibility into graph progress.
+- **Impact:** Stable SSE schema (`run_id`, `seq`, `type`, `name`, `payload`) powers timeline UI and easier debugging.
+
+### Decision 6: Stream only final-answer tokens
+- **Why:** Streaming every intermediate token creates noisy UX and weak signal-to-noise.
+- **Impact:** Cleaner experience: status timeline for process, live tokens for final answer only.
+
+### Decision 7: Explicit anti-injection prompt constraints
 - **Why:** Retrieved context is untrusted and can contain malicious prompt instructions.
 - **Impact:** Improves safety posture during grading and answering.
 
-### Decision 6: Background RAGAS evaluation
+### Decision 8: Background RAGAS evaluation
 - **Why:** Quality must be measured continuously without blocking user latency.
 - **Impact:** Practical signal for iterative improvement.
 
-### Decision 7: Phoenix OTEL instrumentation
+### Decision 9: Phoenix OTEL instrumentation
 - **Why:** Agentic systems need trace-level visibility to debug routing and retrieval behavior.
 - **Impact:** Faster diagnosis and safer production iteration.
 
@@ -164,6 +187,7 @@ Documind addresses these with explicit architecture, not one-off patches.
 - **Retrieval:** Chroma vector search + BM25 + EnsembleRetriever
 - **Evaluation:** RAGAS
 - **Observability:** Arize Phoenix + OpenTelemetry
+- **Containerization:** Docker (backend image + runtime)
 
 ---
 
@@ -197,10 +221,14 @@ Documind/
   runs agentic retrieval workflow and returns full model response after completion.
 
 - `GET /api/chat/stream?query=...`  
-  streams answer tokens as Server-Sent Events (SSE) for live incremental rendering.
-  Event payloads:
-  - `{"token":"..."}` for each chunk
-  - `{"done": true}` when generation is complete
+  streams execution and answer events as Server-Sent Events (SSE).
+  Event payload structure:
+  - `type`: event kind (`run_start`, `node_start`, `tool_start`, `answer_token`, `run_end`, etc.)
+  - `run_id`: unique run identifier
+  - `seq`: monotonic event sequence number
+  - `ts`: UTC timestamp
+  - `name` (optional): node/tool name
+  - `payload` (optional): event data (`token`, decision info, final answer)
 
 ---
 
@@ -210,6 +238,7 @@ Documind/
 
 - Python 3.10+
 - Node.js 18+
+- Docker (for containerized backend run)
 
 ### 1) Backend
 
@@ -252,7 +281,32 @@ Create `frontend/.env` (if not already present):
 VITE_API_BASE_URL=http://localhost:8000
 ```
 
-The frontend uses `GET /api/chat/stream` for real-time streaming and keeps `POST /api/chat` as a non-stream fallback path.
+The frontend uses `GET /api/chat/stream` for execution timeline + final-answer streaming and keeps `POST /api/chat` as a non-stream fallback.
+
+---
+
+## Docker Run (Backend)
+
+Build image from repo root:
+
+```bash
+docker build -t documind-server -f server/Dockerfile server
+```
+
+Run container:
+
+```bash
+docker run --name documind-server \
+  --env-file server/.env \
+  -p 8004:80 \
+  documind-server
+```
+
+Then set frontend API base URL:
+
+```env
+VITE_API_BASE_URL=http://localhost:8004
+```
 
 ---
 
@@ -269,17 +323,17 @@ Known platform and ingestion issues are documented in `TROUBLESHOOTING.md`, incl
 
 ## What a CTO Can Assess from This Repo
 
-- Can this engineer design beyond happy-path demos? **Yes**: graph orchestration, fallback loops, eval, tracing.
+- Can this engineer design beyond happy-path demos? **Yes**: graph orchestration, fallback loops, eval, tracing, structured execution events.
 - Can they make trade-offs under platform constraints? **Yes**: Windows symlink fallback and vector DB migration.
-- Do they think about reliability and safety? **Yes**: guardrails, relevance grading, background quality checks.
-- Can they ship product-facing UX with technical depth? **Yes**: complete upload-to-answer user flow.
+- Do they think about reliability and safety? **Yes**: guardrails, relevance grading, ordered streaming contract, background quality checks.
+- Can they ship product-facing UX with technical depth? **Yes**: complete upload-to-answer user flow with transparent runtime status.
 
 ---
 
 ## Next Improvements
 
-- multi-document corpus management instead of reset-on-upload,
-- citation spans and source highlighting in UI,
-- auth + tenant isolation,
-- automated regression datasets for eval baselines,
-- containerized deployment profiles.
+- multi-document corpus management instead of reset-on-upload
+- citations and source spans in answer rendering
+- auth + tenant isolation
+- automated regression datasets for eval baselines
+- docker-compose profile for one-command full-stack local launch

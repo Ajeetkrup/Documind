@@ -2,9 +2,14 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Bot, Send, Loader2, Sparkles, Menu, AlertCircle } from 'lucide-react'
 
 import Sidebar from './components/Sidebar'
-import { Message, TypingIndicator } from './components/Message'
+import { Message } from './components/Message'
 import WelcomeScreen from './components/WelcomeScreen'
 import { streamChatQuery } from './api'
+
+const createMessageId = () =>
+  (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`
 
 export default function App() {
   const [messages, setMessages]         = useState([])
@@ -17,9 +22,6 @@ export default function App() {
   const bottomRef   = useRef(null)
   const textareaRef = useRef(null)
   const toastTimer  = useRef(null)
-  const streamBufferRef = useRef('')
-  const streamTimerRef = useRef(null)
-  const streamDoneRef = useRef(false)
 
   const hasDocs = uploadedDocs.length > 0;
 
@@ -45,15 +47,6 @@ export default function App() {
     ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`
   }, [input])
 
-  useEffect(() => {
-    return () => {
-      if (streamTimerRef.current) {
-        clearInterval(streamTimerRef.current)
-        streamTimerRef.current = null
-      }
-    }
-  }, [])
-
   const sendMessage = useCallback(async (text) => {
     if (!hasDocs) {
       triggerUploadPrompt();
@@ -61,93 +54,89 @@ export default function App() {
     }
     const trimmed = (text ?? input).trim()
     if (!trimmed || loading) return
-    const userMsg = { role: 'user', content: trimmed, timestamp: new Date() }
-    setMessages(prev => [...prev, userMsg])
+    const userMsg = { id: createMessageId(), role: 'user', content: trimmed, timestamp: new Date() }
+    const botMessageId = createMessageId()
+    const botMsg = {
+      id: botMessageId,
+      role: 'bot',
+      content: '',
+      timestamp: new Date(),
+      executionSteps: [],
+    }
+    setMessages(prev => [...prev, userMsg, botMsg])
     setInput('')
     setLoading(true)
-    streamBufferRef.current = ''
-    streamDoneRef.current = false
 
     try {
       await new Promise((resolve, reject) => {
-        const clearDrainer = () => {
-          if (streamTimerRef.current) {
-            clearInterval(streamTimerRef.current)
-            streamTimerRef.current = null
-          }
-        }
-
-        const appendBotChunk = (chunk) => {
+        const updateBot = (updater) => {
           setMessages(prev => {
             const updated = [...prev]
-            const last = updated[updated.length - 1]
-
-            if (last?.role === 'bot') {
-              updated[updated.length - 1] = { ...last, content: `${last.content}${chunk}` }
-              return updated
-            }
-
-            return [...updated, { role: 'bot', content: chunk, timestamp: new Date() }]
+            const idx = updated.findIndex((msg) => msg.id === botMessageId)
+            if (idx === -1) return prev
+            updated[idx] = updater(updated[idx])
+            return updated
           })
         }
 
-        const resolveIfDrained = () => {
-          if (streamDoneRef.current && !streamBufferRef.current.length) {
-            clearDrainer()
-            resolve()
-          }
-        }
+        const upsertStep = (event, status) => {
+          const kind = event.type.startsWith('tool_') ? 'tool' : 'node'
+          const name = event.name || 'unknown'
+          const stepId = `${kind}:${name}`
 
-        const startDrainer = () => {
-          if (streamTimerRef.current) return
-          // Slow down rendering for a smoother "typewriter" stream effect.
-          streamTimerRef.current = setInterval(() => {
-            if (streamBufferRef.current.length) {
-              const chunk = streamBufferRef.current.slice(0, 2)
-              streamBufferRef.current = streamBufferRef.current.slice(2)
-              appendBotChunk(chunk)
+          updateBot((bot) => {
+            const steps = Array.isArray(bot.executionSteps) ? [...bot.executionSteps] : []
+            const stepIndex = steps.findIndex((step) => step.id === stepId)
+            if (stepIndex >= 0) {
+              steps[stepIndex] = { ...steps[stepIndex], status }
+            } else {
+              steps.push({ id: stepId, kind, name, status })
             }
-            resolveIfDrained()
-          }, 25)
+            return { ...bot, executionSteps: steps }
+          })
         }
 
         const closeStream = streamChatQuery(trimmed, {
-          onToken: (token) => {
-            streamBufferRef.current += token
-            startDrainer()
+          onStatusEvent: (event) => {
+            if (event.type === 'node_start' || event.type === 'tool_start') {
+              upsertStep(event, 'running')
+            }
+            if (event.type === 'node_end' || event.type === 'tool_end') {
+              upsertStep(event, 'done')
+            }
           },
-          onDone: () => {
-            streamDoneRef.current = true
-            startDrainer()
-            resolveIfDrained()
+          onToken: (token) => {
+            if (!token) return
+            updateBot((bot) => ({ ...bot, content: `${bot.content}${token}` }))
+          },
+          onRunEnd: (event) => {
+            const finalAnswer = event?.payload?.answer
+            if (typeof finalAnswer === 'string') {
+              updateBot((bot) => (
+                bot.content.trim()
+                  ? bot
+                  : { ...bot, content: finalAnswer }
+              ))
+            }
             closeStream()
+            resolve()
           },
           onError: (err) => {
-            clearDrainer()
             closeStream()
             reject(err)
           },
         })
       })
     } catch (err) {
-      setMessages(prev => {
-        const updated = [...prev]
-        if (!updated.length) return prev
-        const lastIndex = updated.length - 1
-        const last = updated[lastIndex]
-        if (last.role === 'bot' && !last.content.trim()) {
-          updated[lastIndex] = {
-            ...last,
-            content: `⚠️ Something went wrong: ${err.message}`,
-          }
-          return updated
+      setMessages((prev) => prev.map((msg) => {
+        if (msg.id === botMessageId) {
+          const fallback = msg.content?.trim()
+            ? msg.content
+            : `⚠️ Something went wrong: ${err.message}`
+          return { ...msg, content: fallback }
         }
-        return [...updated, {
-          role: 'bot',
-          content: `⚠️ Something went wrong: ${err.message}`,
-          timestamp: new Date(),
-        }]
-      })
+        return msg
+      }))
     } finally {
       setLoading(false)
     }
@@ -201,9 +190,8 @@ export default function App() {
           {messages.length === 0 ? (
             <WelcomeScreen onSendMessage={sendMessage} hasDocs={hasDocs} />
           ) : (
-            messages.map((msg, i) => <Message key={i} msg={msg} />)
+            messages.map((msg) => <Message key={msg.id} msg={msg} />)
           )}
-          {loading && messages[messages.length - 1]?.role !== 'bot' && <TypingIndicator />}
           <div ref={bottomRef} />
         </div>
 
