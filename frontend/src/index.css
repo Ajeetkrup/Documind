@@ -511,6 +511,10 @@ html, body, #root {
 }
 .message.user { align-self: flex-end; flex-direction: row-reverse; }
 .message.bot  { align-self: flex-start; }
+.message.bot {
+  width: 100%;
+  max-width: 100%;
+}
 
 .msg-avatar {
   width: 36px; height: 36px;
@@ -523,6 +527,10 @@ html, body, #root {
 .msg-avatar.bot  { background: var(--bg-elevated); border: 1px solid var(--border); }
 
 .msg-content { display: flex; flex-direction: column; gap: 5px; max-width: calc(100% - 48px); }
+.message.bot .msg-content {
+  width: calc(100% - 48px);
+  max-width: calc(100% - 48px);
+}
 
 .msg-bubble {
   padding: 13px 18px;
@@ -542,9 +550,19 @@ html, body, #root {
   color: var(--text-primary);
   border: 1px solid var(--border);
   border-bottom-left-radius: 4px;
+  width: 100%;
+  min-height: 56px;
 }
 .msg-time { font-size: 10.5px; color: var(--text-muted); padding: 0 4px; }
 .message.user .msg-time { text-align: right; }
+
+/* Initial wait before first stream event */
+.initial-event-loader {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 
 /* Execution timeline */
 .execution-timeline {

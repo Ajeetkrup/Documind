@@ -21,6 +21,7 @@ export function TypingIndicator() {
 export function Message({ msg }) {
   const isUser = msg.role === 'user'
   const hasSteps = Array.isArray(msg.executionSteps) && msg.executionSteps.length > 0
+  const showInitialLoader = !isUser && msg.awaitingFirstEvent && !hasSteps && !msg.content
   return (
     <div className={`message ${isUser ? 'user' : 'bot'}`}>
       <div className={`msg-avatar ${isUser ? 'user' : 'bot'}`}>
@@ -32,6 +33,13 @@ export function Message({ msg }) {
             ? msg.content
             : (
               <>
+                {showInitialLoader && (
+                  <div className="initial-event-loader" aria-live="polite">
+                    <span className="dot" />
+                    <span className="dot" />
+                    <span className="dot" />
+                  </div>
+                )}
                 {hasSteps && <ExecutionTimeline steps={msg.executionSteps} />}
                 {msg.content && (
                   <div className="markdown-body">

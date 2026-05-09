@@ -62,6 +62,7 @@ export default function App() {
       content: '',
       timestamp: new Date(),
       executionSteps: [],
+      awaitingFirstEvent: true,
     }
     setMessages(prev => [...prev, userMsg, botMsg])
     setInput('')
@@ -92,7 +93,7 @@ export default function App() {
             } else {
               steps.push({ id: stepId, kind, name, status })
             }
-            return { ...bot, executionSteps: steps }
+            return { ...bot, executionSteps: steps, awaitingFirstEvent: false }
           })
         }
 
@@ -107,16 +108,22 @@ export default function App() {
           },
           onToken: (token) => {
             if (!token) return
-            updateBot((bot) => ({ ...bot, content: `${bot.content}${token}` }))
+            updateBot((bot) => ({
+              ...bot,
+              awaitingFirstEvent: false,
+              content: `${bot.content}${token}`,
+            }))
           },
           onRunEnd: (event) => {
             const finalAnswer = event?.payload?.answer
             if (typeof finalAnswer === 'string') {
               updateBot((bot) => (
                 bot.content.trim()
-                  ? bot
-                  : { ...bot, content: finalAnswer }
+                  ? { ...bot, awaitingFirstEvent: false }
+                  : { ...bot, awaitingFirstEvent: false, content: finalAnswer }
               ))
+            } else {
+              updateBot((bot) => ({ ...bot, awaitingFirstEvent: false }))
             }
             closeStream()
             resolve()
@@ -133,7 +140,7 @@ export default function App() {
           const fallback = msg.content?.trim()
             ? msg.content
             : `⚠️ Something went wrong: ${err.message}`
-          return { ...msg, content: fallback }
+          return { ...msg, awaitingFirstEvent: false, content: fallback }
         }
         return msg
       }))
