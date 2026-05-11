@@ -6,6 +6,4 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY ./requirements.txt /src/requirements.txt
 RUN pip install --no-cache-dir -r /src/requirements.txt
 COPY ./src /src/src
-COPY ./onnx_output /src/onnx_output
-ENV ONNX_MODEL_PATH=/src/onnx_output
 CMD sh -c "uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-80}"

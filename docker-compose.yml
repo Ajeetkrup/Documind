@@ -1,0 +1,53 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"  # REST API & Web UI
+      - "6334:6334"  # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  memgraph:
+    image: memgraph/memgraph:latest
+    ports:
+      - "7687:7687"  # Bolt protocol (used by Python driver)
+    environment:
+      - MEMGRAPH_USER=memgraph
+      - MEMGRAPH_PASSWORD=password
+    volumes:
+      - memgraph_data:/var/lib/memgraph
+      - memgraph_log:/var/log/memgraph
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "8000:80" # Map host 8000 to container 80
+    env_file:
+      - ./server/.env
+    environment:
+      - PORT=80
+      - QDRANT_URL=http://qdrant:6333
+      - MEMGRAPH_URI=bolt://memgraph:7687
+    depends_on:
+      - qdrant
+      - memgraph
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    env_file:
+      - ./frontend/.env
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    depends_on:
+      - server
+
+volumes:
+  qdrant_data:
+  memgraph_data:
+  memgraph_log:

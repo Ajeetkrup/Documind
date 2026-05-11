@@ -1,4 +1,5 @@
 from fastapi import APIRouter, File, UploadFile, BackgroundTasks
+from langchain_core.messages import HumanMessage
 from fastapi.responses import StreamingResponse
 import json
 from datetime import datetime, timezone
@@ -7,26 +8,12 @@ from src.utils.evaluator import Evaluator
 
 router = APIRouter()
 
-def delete():
-    import shutil, os
-
-    if os.path.exists("./chroma"):
-        shutil.rmtree("./chroma")
-
-    if os.path.exists("./documents.json"):
-        os.remove("./documents.json")
-
 @router.post("/chat")
 async def chat(query: str, background_tasks: BackgroundTasks):
-    from src.agents.qa_agent.orchestrator import graph
+    from src.agents.legal_agent.orchestrator import graph
 
     response = graph.invoke({
-        "messages": [
-            {
-                "role": "user",
-                "content": query,
-            }
-        ]
+        "messages": [HumanMessage(content=query)]
     })
 
     evaluator = Evaluator()
@@ -42,7 +29,7 @@ async def chat(query: str, background_tasks: BackgroundTasks):
 
 @router.get("/chat/stream")
 async def chat_stream(query: str):
-    from src.agents.qa_agent.orchestrator import graph
+    from src.agents.legal_agent.orchestrator import graph
 
     def event_stream():
         run_id = str(uuid.uuid4())
@@ -68,12 +55,7 @@ async def chat_stream(query: str):
         try:
             for streamed in graph.stream(
                 {
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": query,
-                        }
-                    ]
+                    "messages": [HumanMessage(content=query)]
                 },
                 stream_mode=["values", "custom"],
             ):
@@ -98,15 +80,21 @@ async def chat_stream(query: str):
                 yield serialize_event(event_type, name=name, payload=payload)
 
             final_answer = ""
-            if latest_values and latest_values.get("messages"):
-                last_message = latest_values["messages"][-1]
-                final_answer = getattr(last_message, "content", last_message)
-                if not isinstance(final_answer, str):
-                    final_answer = str(final_answer)
+            thinking = ""
+            if latest_values:
+                thinking = latest_values.get("thinking", "")
+                answer = latest_values.get("answer", "")
+                if answer:
+                    final_answer = answer
+                elif latest_values.get("messages"):
+                    last_message = latest_values["messages"][-1]
+                    final_answer = getattr(last_message, "content", str(last_message))
 
-            yield serialize_event("run_end", payload={"answer": final_answer})
+            yield serialize_event("run_end", payload={"answer": final_answer, "thinking": thinking})
         except Exception as exc:
             yield serialize_event("error", payload={"message": str(exc)})
+
+
 
     return StreamingResponse(
         event_stream(),
@@ -121,10 +109,8 @@ async def chat_stream(query: str):
 @router.post("/upload-document")
 async def upload_document(document: UploadFile = File(...)):
     """Handle document upload requests."""
-    delete()
-
-    from src.utils.injestion import DocumentIngestor
-    ingestor = DocumentIngestor()
+    from src.utils.legal_ingestor import LegalIngestor
+    ingestor = LegalIngestor()
     file_content = await document.read()
     ingestor.ingest(file_content, filename=document.filename)
     return {"message": "Document uploaded successfully."}

@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef } from 'react'
-import { Upload, CheckCircle2, AlertCircle, Loader2, BookOpen, FileText, X } from 'lucide-react'
+import { Upload, CheckCircle2, AlertCircle, Loader2, Scale, FileText, X } from 'lucide-react'
 import { uploadDocument } from '../api'
 
-const TECH = ['FastAPI', 'LangGraph', 'ChromaDB', 'Docling', 'Groq', 'React 19']
+const TECH = ['FastAPI', 'LangGraph', 'Qdrant', 'Memgraph', 'Docling', 'React 19']
 
 export default function Sidebar({ uploadedDocs, onUpload, open, onClose }) {
   const [dragOver, setDragOver]       = useState(false)
@@ -45,10 +45,8 @@ export default function Sidebar({ uploadedDocs, onUpload, open, onClose }) {
     <>
       <div className={`sidebar-overlay ${open ? 'active' : ''}`} onClick={onClose} />
       <aside className={`sidebar ${open ? 'open' : ''}`}>
-        {/* Logo */}
-        <div className="sidebar-logo">
-          <div className="logo-icon"><BookOpen size={20} color="#fff" /></div>
-          <span className="logo-text">Documind</span>
+        {/* Mobile Close Button (Hidden on desktop) */}
+        <div className="sidebar-mobile-header" style={{ display: 'flex', padding: '0 8px' }}>
           <button
             className="close-sidebar-btn"
             onClick={onClose}
@@ -57,8 +55,6 @@ export default function Sidebar({ uploadedDocs, onUpload, open, onClose }) {
             <X size={18} />
           </button>
         </div>
-
-        <div className="sidebar-divider" />
 
         {/* Upload */}
         <div className="sidebar-section">

@@ -1,32 +1,25 @@
-import { MessageSquare, Brain, Search, RotateCcw, Zap } from 'lucide-react'
+import { ShieldCheck, Network, Sparkles, Scale, Zap } from 'lucide-react'
 
 const SUGGESTIONS = [
-  'Summarise this document',
-  'What are the key findings?',
-  'Explain the main topic',
-  'List the important sections',
+  'Find conflicts in vendor DPAs',
+  'Trace liability obligations across all documents',
+  'Check compliance with internal policies',
+  'Extract indemnification clauses',
 ]
 
 const FEATURES = [
-  { icon: Brain,    label: 'Adaptive RAG' },
-  { icon: Search,   label: 'Semantic Search' },
-  { icon: RotateCcw,label: 'Self-Correcting' },
-  { icon: Zap,      label: 'LangGraph' },
+  { icon: Network,    label: 'Dependency Tracing' },
+  { icon: ShieldCheck,   label: 'Conflict Detection' },
+  { icon: Sparkles,label: 'Legal Reasoning' },
+  { icon: Zap,      label: 'Due Diligence' },
 ]
 
 export default function WelcomeScreen({ onSendMessage, hasDocs }) {
   return (
     <div className="welcome-screen">
-      <div className="welcome-glow-ring">
-        <div className="welcome-icon">
-          <MessageSquare size={38} color="#fff" />
-        </div>
-      </div>
-
-      <h1 className="welcome-title">Ask your documents anything</h1>
+      <h1 className="welcome-title">Contract Risk &<br/>Dependency Intelligence</h1>
       <p className="welcome-sub">
-        Upload a PDF, DOCX, or TXT file, then start a conversation.
-        Documind uses an agentic RAG pipeline to retrieve, grade, and reason over your content.
+        Automate due diligence, find cross-contract dependencies, and resolve conflicting obligations instantly.
       </p>
 
       <div className="welcome-features">

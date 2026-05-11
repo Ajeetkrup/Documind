@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Bot, Send, Loader2, Sparkles, Menu, AlertCircle } from 'lucide-react'
+import { Scale, Send, Loader2, Sparkles, Menu, AlertCircle } from 'lucide-react'
 
 import Sidebar from './components/Sidebar'
 import { Message } from './components/Message'
@@ -116,14 +116,15 @@ export default function App() {
           },
           onRunEnd: (event) => {
             const finalAnswer = event?.payload?.answer
+            const thinking = event?.payload?.thinking ?? ''
             if (typeof finalAnswer === 'string') {
               updateBot((bot) => (
                 bot.content.trim()
-                  ? { ...bot, awaitingFirstEvent: false }
-                  : { ...bot, awaitingFirstEvent: false, content: finalAnswer }
+                  ? { ...bot, awaitingFirstEvent: false, thinking }
+                  : { ...bot, awaitingFirstEvent: false, content: finalAnswer, thinking }
               ))
             } else {
-              updateBot((bot) => ({ ...bot, awaitingFirstEvent: false }))
+              updateBot((bot) => ({ ...bot, awaitingFirstEvent: false, thinking }))
             }
             closeStream()
             resolve()
@@ -174,19 +175,19 @@ export default function App() {
             <Menu size={22} />
           </button>
 
-          <div className="header-avatar"><Bot size={20} color="#fff" /></div>
+          <div className="header-avatar"><Scale size={20} color="#000" /></div>
 
           <div className="header-info">
-            <div className="header-title">Documind AI</div>
+            <div className="header-title">Legal Intelligence</div>
             <div className="header-sub">
               <span className="status-dot" />
-              Agentic RAG · LangGraph · Self-Correcting
+              Contract Analysis · Dependency Graph · Reasoning
             </div>
           </div>
 
           <div className="header-badges">
-            <span className="header-badge hb-purple">LangGraph</span>
-            <span className="header-badge hb-teal">Adaptive RAG</span>
+            <span className="header-badge hb-purple">Multi-hop</span>
+            <span className="header-badge hb-teal">Graph RAG</span>
           </div>
 
           <Sparkles size={18} color="var(--text-muted)" style={{ flexShrink: 0 }} />

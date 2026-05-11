@@ -1,234 +1,77 @@
 <div align="center">
-  <h1>Documind</h1>
-  <p><strong>Production-minded, agentic RAG system with transparent execution and reliable answers over private documents.</strong></p>
+  <h1>Legal Intelligence</h1>
+  <p><strong>Contract Risk & Dependency Intelligence System powered by Multi-hop Graph RAG and Agentic Workflows.</strong></p>
 </div>
 
-## Live Demo
+## The Problem
 
-[https://documind-production-81f2.up.railway.app/](https://documind-production-81f2.up.railway.app/)
+Large enterprises manage thousands of contracts, vendor agreements, DPAs, compliance docs, internal policies, and regulations. Lawyers spend an immense amount of time:
+- Finding dependencies across documents
+- Tracing references and liability obligations
+- Checking for conflicts in obligations
+- Reviewing terms
+- Validating compliance
 
-## What This Project Demonstrates
+This manual work is repetitive, expensive, and error-prone. 
 
-Documind is a full-stack AI product that ingests enterprise-style documents and answers questions using an adaptive retrieval workflow. It is built to demonstrate practical engineering depth, not just a chatbot demo.
+## The Solution
 
-For recruiters and startup founders, this repo demonstrates:
-
-- end-to-end product ownership (UI, API, retrieval pipeline, and deployment ergonomics),
-- agentic RAG architecture with self-correction loops,
-- execution transparency (node/tool lifecycle timeline in UI),
-- security-aware prompting (prompt injection guardrails),
-- measurable quality loops (RAGAS evaluation),
-- production-grade observability (Arize Phoenix + OpenTelemetry),
-- real-world platform decisions under constraints (Windows compatibility, local embeddings, vector DB trade-offs).
+**Legal Intelligence** automates due diligence, finds cross-contract dependencies, and resolves conflicting obligations instantly. By combining semantic vector search with knowledge graph traversals, this system mimics a lawyer's multi-hop reasoning process.
 
 ---
 
-## Architecture Diagram
+## Core Features
 
-![Documind Architecture](docs/agent_architecture.png)
+### 1) Multi-Hop Graph RAG (Dependency Tracing)
+Legal Intelligence doesn't just do basic text matching. It uses **Memgraph** to trace relationships between clauses, definitions, and distinct contracts (e.g., finding how a DPA supersedes a master vendor agreement).
 
-### High-Level Flow
+### 2) Semantic Context & Conflict Detection
+Uses **Qdrant** alongside state-of-the-art **NVIDIA Embeddings** to semantically understand legal text and identify conflicting clauses or compliance violations across large corpora.
 
-1. User uploads a document (`/api/upload-document`).
-2. Backend parses/chunks with Docling + HybridChunker.
-3. Chunks are embedded with local ONNX embeddings and stored in Chroma.
-4. User asks a question (`/api/chat` or `/api/chat/stream`).
-5. LangGraph orchestrator routes through retrieve -> grade -> rewrite (if needed) -> answer.
-6. Frontend receives ordered node/tool status events and renders execution timeline.
-7. Final answer is streamed token-by-token during answer generation.
-8. RAGAS evaluation runs in background for quality tracking.
-9. Phoenix traces the pipeline for observability.
+### 3) Agentic Routing & Self-Correction
+Orchestrated via **LangGraph**:
+- `router`: Intelligently decides if a query needs semantic search, graph traversal, both, or if it's a direct conversational query that requires no retrieval.
+- `grade_documents`: Automatically scores retrieved legal context for relevance.
+- `rewrite_query`: If retrieval fails to find relevant clauses, the agent rewrites the query and tries again.
 
----
+### 4) Execution Transparency (UI)
+The frontend features a "Mesmerizing" deep black and neon green UI that provides a live execution timeline. You can see exactly which nodes and tools are running, building trust in the system's reasoning process. The model's internal `<think>` reasoning blocks are also neatly separated from the final answer.
 
-## Core Features (Implemented)
+### 5) Advanced Document Parsing
+Leverages **Docling** for deep structural parsing of complex PDFs and DOCX files, ensuring tables, lists, and hierarchical headings are properly indexed.
 
-### 1) Agentic, Self-Correcting RAG Workflow
-
-The QA pipeline is not a single retrieve-and-generate call. It is a graph:
-
-- `generate_query_or_respond`: model decides whether retrieval is needed,
-- `retrieve`: tool call to a hybrid retriever,
-- `grade_documents`: checks retrieval relevance,
-- `rewrite_question`: rewrites weak queries and loops back,
-- `generate_answer`: creates final grounded response.
-
-This gives controlled adaptation when first-pass retrieval is weak.
-
-### 2) Execution Transparency in UI
-
-The frontend shows step-by-step execution so users can see what the agent is doing:
-
-- node status events (`node_start` -> `node_end`),
-- tool status events (`tool_start` -> `tool_end`),
-- visual running/done markers in the chat timeline,
-- streamed final answer text while the `generate_answer` node runs.
-
-This creates trust and improves debuggability during real usage.
-
-### 3) Prompt Injection Guardrails
-
-Guardrails are explicitly embedded in prompts for both grading and answering:
-
-- retrieved context is marked as **UNTRUSTED**,
-- model is told to ignore instructions inside context,
-- model is constrained to relevance-checking or factual extraction only.
-
-This protects against malicious instructions buried in uploaded files.
-
-### 4) Hybrid Retriever (Semantic + Keyword)
-
-Retrieval combines:
-
-- dense vector search via Chroma + ONNX embeddings,
-- sparse keyword search via BM25,
-- weighted ensemble (0.7 dense, 0.3 BM25).
-
-Why it matters: semantic retrieval catches meaning; BM25 catches exact terms/entities. Ensemble retrieval is more robust than either alone.
-
-### 5) Local ONNX Embeddings
-
-Embeddings run from a local ONNX model for predictable inference and lower vendor lock-in at retrieval time.
-
-### 6) RAGAS Quality Check
-
-Each chat request schedules a background evaluation using:
-
-- `AgentGoalAccuracyWithReference`,
-- LangGraph-to-RAGAS message conversion,
-- async scoring pipeline.
-
-This creates a measurable feedback loop for answer quality.
-
-### 7) Arize Phoenix Observability
-
-The app is instrumented with Phoenix OpenTelemetry registration in backend startup:
-
-- traces capture agent execution paths,
-- helps debug routing/retrieval behavior,
-- supports iteration with visibility instead of guesswork.
-
-### 8) Full-Stack Product UX
-
-Frontend includes:
-
-- drag-and-drop file upload,
-- ingestion state feedback,
-- document-aware chat gating (forces upload before querying),
-- execution timeline with per-node/per-tool status,
-- final-answer streaming via SSE,
-- markdown response rendering,
-- responsive sidebar/chat experience.
-
----
-
-## Why This Is Hard
-
-Building a reliable RAG product is hard because you are solving multiple systems problems at once:
-
-- **Retrieval quality is non-deterministic**: a single bad query can return weak context and collapse answer quality.
-- **Documents are messy**: real PDFs contain structural metadata that many vector stores cannot ingest directly.
-- **Security is subtle**: retrieved text can contain adversarial instructions that hijack generation.
-- **Infra is platform-dependent**: Windows filesystem behavior and vector DB packaging constraints can break "standard" setups.
-- **LLM apps need observability**: without traces and evals, failures feel random and are difficult to improve.
-
-Documind addresses these with explicit architecture, not one-off patches.
-
----
-
-## Key Engineering Decisions (And Why)
-
-### Decision 1: LangGraph state machine over linear chains
-- **Why:** Needed explicit control over branching, looping, and deterministic node transitions.
-- **Impact:** Enables self-correction and explainable execution flow.
-
-### Decision 2: Hybrid retriever over pure vector search
-- **Why:** Dense retrieval misses exact keywords in some cases; BM25 misses semantic paraphrases.
-- **Impact:** Better recall across varied query styles.
-
-### Decision 3: ChromaDB over Milvus-lite for local Windows dev
-- **Why:** Milvus-lite support is not Windows-friendly in this setup.
-- **Impact:** Preserved local persistent vector storage without Docker dependency.
-
-### Decision 4: Filter complex metadata before indexing
-- **Why:** Docling outputs nested metadata that Chroma rejects.
-- **Impact:** Prevented ingestion failures while retaining useful searchable content.
-
-### Decision 5: Explicit execution event contract for frontend
-- **Why:** Users and developers need deterministic, ordered visibility into graph progress.
-- **Impact:** Stable SSE schema (`run_id`, `seq`, `type`, `name`, `payload`) powers timeline UI and easier debugging.
-
-### Decision 6: Stream only final-answer tokens
-- **Why:** Streaming every intermediate token creates noisy UX and weak signal-to-noise.
-- **Impact:** Cleaner experience: status timeline for process, live tokens for final answer only.
-
-### Decision 7: Explicit anti-injection prompt constraints
-- **Why:** Retrieved context is untrusted and can contain malicious prompt instructions.
-- **Impact:** Improves safety posture during grading and answering.
-
-### Decision 8: Background RAGAS evaluation
-- **Why:** Quality must be measured continuously without blocking user latency.
-- **Impact:** Practical signal for iterative improvement.
-
-### Decision 9: Phoenix OTEL instrumentation
-- **Why:** Agentic systems need trace-level visibility to debug routing and retrieval behavior.
-- **Impact:** Faster diagnosis and safer production iteration.
+### 6) Production-Grade Observability & Evaluation
+Integrated with **Arize Phoenix** for OpenTelemetry tracing of agent executions, and **Ragas** for measuring RAG quality (Context Precision, Answer Relevancy).
 
 ---
 
 ## Tech Stack
 
-- **Frontend:** React 19, Vite, Lucide, React Markdown
-- **Backend:** FastAPI, Python
-- **Agent Orchestration:** LangGraph, LangChain
-- **LLM Serving:** Groq-hosted models (for response + grading)
-- **Embeddings:** Local ONNX Runtime + Transformers tokenizer
-- **Document Parsing/Chunking:** Docling + HybridChunker
-- **Retrieval:** Chroma vector search + BM25 + EnsembleRetriever
-- **Evaluation:** RAGAS
-- **Observability:** Arize Phoenix + OpenTelemetry
-- **Containerization:** Docker (backend image + runtime)
+- **Frontend**: React 19, Vite, Lucide React, Custom Dark/Neon Green UI
+- **Backend**: FastAPI, Python, Server-Sent Events (SSE) for streaming
+- **Agent Orchestration**: LangGraph, LangChain
+- **LLM Serving**: Groq (Llama 3 / Qwen) and NVIDIA NIM
+- **Embeddings**: NVIDIA Embeddings (`nvidia-nim`)
+- **Document Parsing**: Docling
+- **Vector Database**: Qdrant (Semantic Search)
+- **Graph Database**: Memgraph (Dependency & Entity relationships)
+- **Observability**: Arize Phoenix, OpenTelemetry
+- **Infrastructure**: Docker Compose
 
 ---
 
-## Repository Structure
+## Architecture Flow
 
-```text
-Documind/
-├─ docs/
-│  └─ agent_architecture.png
-├─ frontend/
-│  └─ src/
-│     ├─ App.jsx
-│     └─ components/
-└─ server/
-   ├─ requirements.txt
-   └─ src/
-      ├─ main.py
-      ├─ routes/api.py
-      ├─ agents/qa_agent/
-      └─ utils/
-```
-
----
-
-## API Surface
-
-- `POST /api/upload-document`  
-  multipart upload; ingests and indexes a single document.
-
-- `POST /api/chat?query=...`  
-  runs agentic retrieval workflow and returns full model response after completion.
-
-- `GET /api/chat/stream?query=...`  
-  streams execution and answer events as Server-Sent Events (SSE).
-  Event payload structure:
-  - `type`: event kind (`run_start`, `node_start`, `tool_start`, `answer_token`, `run_end`, etc.)
-  - `run_id`: unique run identifier
-  - `seq`: monotonic event sequence number
-  - `ts`: UTC timestamp
-  - `name` (optional): node/tool name
-  - `payload` (optional): event data (`token`, decision info, final answer)
+1. **Ingestion (`/api/upload-document`)**: 
+   - Document is parsed by Docling.
+   - Text is chunked, embedded via NVIDIA, and stored in Qdrant.
+   - Entities and relationships (dependencies, superseding clauses) are extracted and pushed to Memgraph.
+2. **Querying (`/api/chat/stream`)**: 
+   - User asks a complex contract question.
+   - **Router** classifies the query (Semantic, Graph, Both, or Direct).
+   - **Retrieval Agent** executes queries against Qdrant and/or Memgraph via tool calls.
+   - Results are graded for relevance.
+   - Final generation streams the reasoning (`<think>`) and answer back to the UI.
 
 ---
 
@@ -238,102 +81,82 @@ Documind/
 
 - Python 3.10+
 - Node.js 18+
-- Docker (for containerized backend run)
+- Docker and Docker Compose (required for Qdrant, Memgraph, and containerized deployment)
 
-### 1) Backend
+### 1) Environment Variables
 
-```bash
-cd server
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-# macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-Create `server/.env` with:
-
+Create `server/.env`:
 ```env
-NVIDIA_API_KEY=your_key
-GROQ_API_KEY=your_key
-PHOENIX_API_KEY=your_key
-PHOENIX_COLLECTOR_ENDPOINT=your_phoenix_endpoint
+NVIDIA_API_KEY=your_nvidia_key
+GROQ_API_KEY=your_groq_key
+PHOENIX_COLLECTOR_ENDPOINT=http://localhost:6006/v1/traces
 ```
 
-Run backend:
+### 2) Run Infrastructure (Databases + Backend + Frontend)
+
+The easiest way to run the entire stack is using Docker Compose:
 
 ```bash
-uvicorn src.main:app --reload --port 8000
+docker compose up --build -d
 ```
 
-### 2) Frontend
+This will spin up:
+- **Qdrant** (Vector DB)
+- **Memgraph** (Graph DB)
+- **Backend API** (FastAPI on port 8000)
+- **Frontend UI** (Vite on port 5173)
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Open `http://localhost:5173`.
-
-Create `frontend/.env` (if not already present):
-
-```env
-VITE_API_BASE_URL=http://localhost:8000
-```
-
-The frontend uses `GET /api/chat/stream` for execution timeline + final-answer streaming and keeps `POST /api/chat` as a non-stream fallback.
+Open `http://localhost:5173` to interact with Legal Intelligence.
 
 ---
 
-## Docker Run (Backend)
+## API Surface
 
-Build image from repo root:
+- `POST /api/upload-document`  
+  Ingests and indexes a single legal document (PDF, DOCX, TXT) into both Qdrant and Memgraph.
 
-```bash
-docker build -t documind-server -f server/Dockerfile server
-```
-
-Run container:
-
-```bash
-docker run --name documind-server \
-  --env-file server/.env \
-  -p 8004:80 \
-  documind-server
-```
-
-Then set frontend API base URL:
-
-```env
-VITE_API_BASE_URL=http://localhost:8004
-```
+- `GET /api/chat/stream?query=...`  
+  Streams execution steps, tool calls, model reasoning, and the final answer as Server-Sent Events (SSE).
 
 ---
 
-## Troubleshooting and Operational Notes
+## Key Engineering Decisions (And Why)
 
-Known platform and ingestion issues are documented in `TROUBLESHOOTING.md`, including:
+Building a reliable AI legal product is hard. You are solving multiple systems problems at once: non-deterministic retrieval, messy PDF structures, and security against prompt injection. Here is how Legal Intelligence addresses these challenges:
 
-- tokenizer max token context mismatch,
-- Hugging Face symlink privilege issues on Windows,
-- Milvus-lite compatibility constraints,
-- Chroma metadata schema limits.
+### Decision 1: Multi-Hop Graph RAG over Vector-Only RAG
+- **Why:** Contracts are heavily cross-referenced. Vector search might find a "liability clause," but it won't easily find "which vendor agreement is superseded by this DPA."
+- **Impact:** By combining **Qdrant** (semantic search) and **Memgraph** (relationship traversal), the system correctly answers complex dependency questions that standard RAG fails on.
+
+### Decision 2: LangGraph State Machine over Linear Chains
+- **Why:** Needed explicit control over branching, looping, and deterministic node transitions.
+- **Impact:** Enables the agent to self-correct (e.g., rewriting weak queries) and intelligently route conversational vs. analytical queries, ensuring reliability.
+
+### Decision 3: Explicit Execution Event Contract for Frontend
+- **Why:** Users need deterministic, ordered visibility into graph progress to trust the system.
+- **Impact:** A stable Server-Sent Events (SSE) schema powers the live timeline UI, allowing the user to watch the agent "think" and execute tools in real-time.
+
+### Decision 4: Separation of Reasoning and Answer
+- **Why:** Large models generate better answers when allowed to "think" out loud, but exposing raw reasoning mixed with the final answer creates a poor UX.
+- **Impact:** The backend explicitly parses `<think>` blocks, streaming them to a collapsible "Reasoning" UI component, keeping the final output clean and authoritative.
+
+### Decision 5: Background Evaluation & Observability
+- **Why:** "Vibes" are not a valid testing strategy for legal tech.
+- **Impact:** Every inference trace is sent to **Arize Phoenix** via OpenTelemetry. Retrieval context and generation relevance are evaluated using **Ragas** metrics, providing concrete signals for improvement.
 
 ---
 
-## What a CTO Can Assess from This Repo
+## What a CTO or Recruiter Can Assess from This Repo
 
-- Can this engineer design beyond happy-path demos? **Yes**: graph orchestration, fallback loops, eval, tracing, structured execution events.
-- Can they make trade-offs under platform constraints? **Yes**: Windows symlink fallback and vector DB migration.
-- Do they think about reliability and safety? **Yes**: guardrails, relevance grading, ordered streaming contract, background quality checks.
-- Can they ship product-facing UX with technical depth? **Yes**: complete upload-to-answer user flow with transparent runtime status.
+- **Can this engineer design beyond happy-path demos?** **Yes**: This project features graph orchestration, fallback loops, deterministic routing, and structured execution events.
+- **Can they make complex architectural trade-offs?** **Yes**: Moving beyond simple vector DBs to a hybrid Vector + Graph architecture using Memgraph and Qdrant for accurate dependency tracing.
+- **Do they think about reliability and user trust?** **Yes**: The mesmerizing UI isn't just for show; it exposes the agent's internal state machine transparently, building user confidence.
+- **Can they ship product-facing UX with technical depth?** **Yes**: Complete end-to-end ownership—from complex backend data ingestion and agentic workflows to a highly polished, responsive frontend.
 
 ---
 
-## Next Improvements
+## Next Steps / Roadmap
 
-- multi-document corpus management instead of reset-on-upload
-- citations and source spans in answer rendering
-- auth + tenant isolation
-- automated regression datasets for eval baselines
-- docker-compose profile for one-command full-stack local launch
+- Multi-tenant data isolation for enterprise deployment.
+- Exact citation highlighting directly within the original PDF viewer.
+- Automated compliance checklists based on uploaded policies.
