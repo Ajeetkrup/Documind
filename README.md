@@ -1,6 +1,10 @@
 <div align="center">
   <h1>Legal Intelligence</h1>
   <p><strong>Contract Risk & Dependency Intelligence System powered by Multi-hop Graph RAG and Agentic Workflows.</strong></p>
+  
+  <br />
+  <img src="docs/Legal Intelligence – default.jpg" alt="Welcome Screen" width="48%">
+  <img src="docs/Legal Intelligence – Query.jpg" alt="Query Execution Screen" width="48%">
 </div>
 
 ## The Problem
